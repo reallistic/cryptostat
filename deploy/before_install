@@ -1,3 +1,3 @@
 #!/bin/bash
-yum -y install python36 python36-pip
+yum -y install python36 python36-pip git
 alternatives --set python /usr/bin/python3.6
