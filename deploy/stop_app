@@ -1,4 +1,4 @@
 #!/bin/bash
-if service --status-all | grep -Fq 'bitty'; then
+if [ -f "/etc/init.d/bitty" ]; then
     service bitty stop
 fi
