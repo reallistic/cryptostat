@@ -1,0 +1,20 @@
+version: 0.0.1
+os: linux
+files:
+  - source: /deploy/bitty
+    destination: /etc/init.d/bitty
+  - source: /
+    destination: /app/
+hooks:
+  BeforeInstall:
+    - location: deploy/before_install
+      timeout: 300
+      runas: root
+  ApplicationStart:
+    - location: deploy/start_app
+      timeout: 300
+      runas: root
+  ApplicationStop:
+    - location: deploy/stop_app
+      timeout: 300
+      runas: root
