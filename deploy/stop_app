@@ -1,5 +1,0 @@
-#!/bin/bash -xe
-if [ -f "/etc/init.d/bitty" ]; then
-    echo "service found. stopping"
-    . /etc/init.d/bitty stop
-fi

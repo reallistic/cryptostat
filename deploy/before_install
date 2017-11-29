@@ -1,3 +1,0 @@
-#!/bin/bash
-yum -y install python36 python36-pip git glibc-devel gcc python36-devel
-alternatives --set python /usr/bin/python3.6
