@@ -23,11 +23,13 @@ PRODUCT_PAIRS = (
     ['LTC-BTC']
 )
 
+DATA_URL = os.getenv('DATA_URL', 'http://localhost:9200/bitty-%s/trade/')
+
 async def push_data(trade):
     data = trade.to_json()
     date = data['time'][:7]
     async with aiohttp.ClientSession() as session:
-        async with session.post('http://localhost:9200/bitty-%s/trade/' % date,
+        async with session.post(DATA_URL % date,
                                 data=json_dumps(data)) as resp:
             if resp.status < 200 or resp.status >= 300:
                 logger.error('got bad status code while sending data %s',
