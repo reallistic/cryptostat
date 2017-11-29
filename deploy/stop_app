@@ -1,2 +1,4 @@
 #!/bin/bash
-sudo service bitty stop
+if service --status-all | grep -Fq 'bitty'; then
+    service bitty stop
+fi
