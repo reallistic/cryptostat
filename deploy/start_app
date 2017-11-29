@@ -1,2 +1,2 @@
 #!/bin/bash
-sudo service bitty start
+. /etc/init.d/bitty start

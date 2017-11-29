@@ -1,4 +1,2 @@
 #!/bin/bash
 python -m pip install -r /app/requirements.txt
-chkconfig --add bitty
-chkconfig bitty on
