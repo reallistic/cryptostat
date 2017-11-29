@@ -16,7 +16,7 @@ DESC="Crypto data collector"
 DAEMON=$PYTHON
 DAEMON_HOME="/app/"
 SCRIPT=$DAEMON_HOME/collect.py
-DAEMON_ARGS=""
+DAEMON_ARGS="$SCRIPT"
 SCRIPTNAME=/etc/init.d/bitty
 #the user that will run the script
 USER=root
@@ -38,10 +38,10 @@ start() {
         sleep 5
         PID=`ps aux|grep -vE 'grep|runuser|bash'|grep -w "$SCRIPT"|awk '{print $2}'`
         if [ -z "$PID" ]; then
-            printf "[ \e[31mFAIL\033[0m ]\n"
+            printf "[ FAIL ]\n"
         else
             echo $PID > $PIDFILE
-            printf "[ \e[32mOK\033[0m ]\n"
+            printf "[ OK ]\n"
         fi
     fi
 }
@@ -51,10 +51,10 @@ stop() {
     if [ -f $PIDFILE ]; then
         PID=`cat $PIDFILE`
         kill -HUP $PID 2>/dev/null
-        printf "[ \e[32mOK\033[0m ]\n"
+        printf "[ OK ]\n"
         rm -f $PIDFILE
     else
-        printf "[ \e[31mFAIL\033[0m ]\n" 
+        printf "[ FAIL ]\n"
     fi
 }
 
@@ -65,10 +65,10 @@ check_status() {
         if [ -z "`pgrep $PID`" ] && [ "$PID" != "`ps aux|grep -vE 'grep|runuser|bash'|grep -w "$SCRIPT"|awk '{print $2}'`" ]; then
             printf "%s\n" "Process dead but pidfile exists"
         else
-            printf "[ \e[32mRUNNING\033[0m ]\n"
+            printf "[ RUNNING ]\n"
         fi
     else
-        printf "[ \e[31mSTOPPED\033[0m ]\n"
+        printf "[ STOPPED ]\n"
     fi
 }
 
