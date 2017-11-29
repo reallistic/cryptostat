@@ -10,6 +10,10 @@ hooks:
     - location: deploy/before_install
       timeout: 300
       runas: root
+  AfterInstall:
+    - location: deploy/after_install
+      timeout: 300
+      runas: root
   ApplicationStart:
     - location: deploy/start_app
       timeout: 300
