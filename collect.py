@@ -4,6 +4,8 @@ import asyncio
 import logging
 import ujson
 
+import aiohttp.web
+
 from bitty import loggers
 from bitty.consumers.gdax import GdaxConsumer
 from bitty.consumers.poloniex import PoloniexConsumer
@@ -38,43 +40,70 @@ async def push_data(trade):
         resp_text = await resp.text()
 
 
-def collect(loop=None):
-    if loop is None:
-        loop = asyncio.get_event_loop()
+CONSUMERS_AVAILABLE = dict(
+    gdax=GdaxConsumer,
+    poloniex=PoloniexConsumer
+)
+
+CONSUMER_PAIRS_ACTIVE = dict(
+    gdax=[
+        'BTC-USD',
+        'ETH-USD',
+        'ETH-BTC',
+        'LTC-USD',
+        'LTC-BTC'
+    ],
+    polo=[ ] # USDT_BTC
+)
+
+
+def collect(app):
+    loop = app.loop
 
     threads = []
 
-    for product_ids in PRODUCT_PAIRS:
-        logger.info('creating thread for pair: %s', product_ids)
-        keeper = GdaxConsumer(product_ids, loop=loop)
-        keeper.on_trade(push_data)
-        keeper.spawn_consumer()
-        threads.append(keeper)
+    for consumer, pairs in CONSUMER_PAIRS_ACTIVE.items():
+        for pair in pairs:
+            logger.info('creating thread for %s pair: %s', consumer, pair)
+            # legacy, I guess it makes most since to convert this
+            # to 1-1
+            product_ids = [pair]
+            try:
+                consumer_cls = CONSUMERS_AVAILABLE[consumer]
+            except KeyError:
+                logger.error('consumer %s not available', consumer)
+                continue
+            keeper = consumer_cls(product_ids, loop=loop)
+            keeper.on_trade(push_data)
+            keeper.spawn_consumer()
+            threads.append(keeper)
 
-    """
-    keeper = PoloniexConsumer(['USDT_BTC'], loop=loop)
-    keeper.on_trade(push_data)
-    keeper.spawn_consumer()
-    threads.append(keeper)
-    """
+    app['collector_threads'] = threads
 
-    return threads
+
+async def stop_collect(app):
+    logger.info('exiting')
+    cos = []
+    for thread in app['collector_threads']:
+        cos.append(thread.kill())
+
+    await asyncio.gather(*cos, loop=app.loop)
+
+
+async def get_consumer_pairs_active(request):
+    return aiohttp.web.json_response(
+        dict(active_pairs=CONSUMER_PAIRS_ACTIVE),
+        dumps=json_dumps
+    )
 
 
 def main():
     loggers.setup()
-    loop = asyncio.get_event_loop()
-    threads = collect(loop=loop)
-    try:
-        loop.run_forever()
-    except KeyboardInterrupt:
-        logger.info('exiting')
-        cos = []
-        for thread in threads:
-            cos.append(thread.kill())
-
-        loop.run_until_complete(asyncio.gather(*cos, loop=loop))
-        loop.stop()
+    app = aiohttp.web.Application()
+    app.on_startup.append(collect)
+    app.on_cleanup.append(stop_collect)
+    app.router.add_get('/', get_consumer_pairs_active)
+    aiohttp.web.run_app(app, port=int(os.getenv('PORT', 5000)))
 
 
 if __name__ == '__main__':
