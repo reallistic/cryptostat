@@ -29,6 +29,12 @@ PRODUCT_PAIRS = (
 DATA_URL = os.getenv('DATA_URL', 'http://localhost:9200/bitty-%s/trade/')
 
 async def push_data(trade):
+
+    icon = '📈' if trade.side == 'sell' else '📉'
+    logger.debug('%s :: %s :: %s %s%s   %s %s', trade.exchange_name,
+                 trade.product_id, trade.size,
+                 trade.price, icon, trade.trade_id, trade.time)
+
     data = trade.to_json()
     date = data['time'][:7]
     async with aiohttp.ClientSession() as session:
@@ -38,6 +44,11 @@ async def push_data(trade):
                 logger.error('got bad status code while sending data %s',
                              resp.status)
         resp_text = await resp.text()
+
+def on_heartbeat(message):
+    logger.debug('%s | %s :: heartbeat :: %s %s', message.exchange_name,
+                 message.product_id, message.last_trade_id,
+                 message.time)
 
 
 CONSUMERS_AVAILABLE = dict(
@@ -53,7 +64,11 @@ CONSUMER_PAIRS_ACTIVE = dict(
         'LTC-USD',
         'LTC-BTC'
     ],
-    polo=[ ] # USDT_BTC
+    poloniex=[
+        'USDT_REP',
+        'USDT_BTC',
+        'USDT_ETH'
+    ]
 )
 
 
@@ -75,6 +90,7 @@ def collect(app):
                 continue
             keeper = consumer_cls(product_ids, loop=loop)
             keeper.on_trade(push_data)
+            keeper.on_heartbeat(on_heartbeat)
             keeper.spawn_consumer()
             threads.append(keeper)
 
@@ -96,6 +112,13 @@ async def get_consumer_pairs_active(request):
         dumps=json_dumps
     )
 
+async def get_consumer_pairs_status(request):
+    rv = dict(
+        status=dict([(consumer.consumer_id, consumer.get_status())
+                    for consumer in request.app['collector_threads']])
+    )
+    return aiohttp.web.json_response(rv, dumps=json_dumps)
+
 
 def main():
     loggers.setup()
@@ -103,6 +126,7 @@ def main():
     app.on_startup.append(collect)
     app.on_cleanup.append(stop_collect)
     app.router.add_get('/', get_consumer_pairs_active)
+    app.router.add_get('/status', get_consumer_pairs_status)
     aiohttp.web.run_app(app, port=int(os.getenv('PORT', 5000)))
 
 
