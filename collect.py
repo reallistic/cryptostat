@@ -28,6 +28,17 @@ PRODUCT_PAIRS = (
 
 DATA_URL = os.getenv('DATA_URL', 'http://localhost:9200/bitty-%s/trade/')
 
+def convert_to_satoshi(amount):
+    left_side, right_side = amount.split('.')
+    pad = ''
+    if len(right_side) < 8:
+        pad = '0' * (8 - len(right_side))
+    else:
+        right_side = right_side[:8]
+
+    return int(f'{left_side}{right_side}{pad}')
+
+
 async def push_data(trade):
 
     icon = '📈' if trade.side == 'sell' else '📉'
@@ -36,7 +47,11 @@ async def push_data(trade):
                  trade.price, icon, trade.trade_id, trade.time)
 
     data = trade.to_json()
+    data['l_size'] = convert_to_satoshi(trade.size)
+    data['l_price'] = convert_to_satoshi(trade.price)
+
     date = data['time'][:7]
+
     async with aiohttp.ClientSession() as session:
         async with session.post(DATA_URL % date,
                                 data=json_dumps(data)) as resp:
@@ -124,7 +139,7 @@ def main():
     loggers.setup()
     app = aiohttp.web.Application()
     app.on_startup.append(collect)
-    app.on_cleanup.append(stop_collect)
+    app.on_shutdown.append(stop_collect)
     app.router.add_get('/', get_consumer_pairs_active)
     app.router.add_get('/status', get_consumer_pairs_status)
     aiohttp.web.run_app(app, port=int(os.getenv('PORT', 5000)))
